@@ -106,3 +106,35 @@ SELECT dept_no,COUNT(emp_no) AS total_count
 FROM dept_emp
 WHERE YEAR(to_date) = 9999
 GROUP BY dept_no;
+-- how many salaries has each emp had over time?:
+SELECT emp_no,COUNT(salary) AS total_count_sal
+FROM salaries
+GROUP BY emp_no
+;
+-- max salary for each employee:
+SELECT emp_no,MAX(salary) AS max_sal
+FROM salaries
+GROUP BY emp_no
+LIMIT 10;
+-- min salary for each employee:
+SELECT emp_no,MIN(salary) AS min_sal
+FROM salaries
+GROUP BY emp_no
+LIMIT 10;
+-- std salary for each employee:
+SELECT emp_no,ROUND(STD(salary),2) AS std_dev_sal
+FROM salaries
+GROUP BY emp_no
+LIMIT 10;
+-- max salary for each employee where max > 150k:
+SELECT emp_no,MAX(salary) AS max_sal
+FROM salaries
+GROUP BY emp_no
+HAVING max_sal > 150000
+LIMIT 10;
+-- AVG sal for each employee where AVG between 80k and 90k:
+SELECT emp_no,ROUND(AVG(salary),2) AS avg
+FROM salaries
+GROUP BY emp_no
+HAVING avg BETWEEN 80000 AND 90001
+ORDER BY avg DESC;
