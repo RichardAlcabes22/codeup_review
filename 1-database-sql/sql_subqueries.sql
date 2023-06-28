@@ -152,3 +152,82 @@ SELECT
 (SELECT COUNT(*)
 FROM (SELECT salary FROM salaries WHERE YEAR(to_date) = 9999) AS curr_sals)
 ;
+
+-- dept names with curr_manager that is Female
+SELECT dept_name
+-- ,CONCAT(last_name,', ',first_name) AS manager, e.gender
+FROM departments AS d
+	JOIN dept_manager AS dm
+	  USING (dept_no)
+	JOIN employees AS e
+      USING (emp_no)
+WHERE YEAR(dm.to_date) = 9999
+		AND e.gender = 'F'
+;
+-- first and last names of employee with highest salary:
+SELECT e.first_name,e.last_name,s.salary
+FROM salaries AS s
+	JOIN employees AS e
+      USING(emp_no)
+WHERE YEAR(s.to_date) = 9999
+ORDER BY s.salary DESC
+LIMIT 1
+;
+-- dept that employee with highest sal works in?
+SELECT e.first_name,e.last_name,s.salary,d.dept_name
+FROM salaries AS s
+	JOIN employees AS e
+      USING(emp_no)
+	JOIN dept_emp AS de
+      USING(emp_no)
+	JOIN departments AS d
+	  USING(dept_no)
+WHERE YEAR(s.to_date) = 9999
+ORDER BY s.salary DESC
+LIMIT 1
+;
+-- highest paid employee in each dept:
+SELECT d.dept_name,MAX(s.salary)
+FROM salaries AS s
+	JOIN employees AS e
+      USING(emp_no)
+	JOIN dept_emp AS de
+      USING(emp_no)
+	JOIN departments AS d
+	  USING(dept_no)
+WHERE YEAR(s.to_date) = 9999
+	AND YEAR(de.to_date) = 9999
+GROUP BY d.dept_name
+;
+
+SELECT e.first_name, e.last_name
+FROM salaries AS s
+	JOIN employees AS e
+      USING(emp_no)
+	JOIN dept_emp AS de
+      USING(emp_no)
+	JOIN departments AS d
+	  USING(dept_no)
+WHERE d.dept_name = (SELECT d.dept_name
+						FROM salaries AS s
+							JOIN employees AS e
+							  USING(emp_no)
+							JOIN dept_emp AS de
+							  USING(emp_no)
+							JOIN departments AS d
+							  USING(dept_no)
+						WHERE YEAR(s.to_date) = 9999
+							AND YEAR(de.to_date) = 9999
+						GROUP BY d.dept_name)
+	AND s.salary = (SELECT MAX(s.salary)
+						FROM salaries AS s
+							JOIN employees AS e
+							  USING(emp_no)
+							JOIN dept_emp AS de
+							  USING(emp_no)
+							JOIN departments AS d
+							  USING(dept_no)
+						WHERE YEAR(s.to_date) = 9999
+							AND YEAR(de.to_date) = 9999
+						GROUP BY d.dept_name)
+;
