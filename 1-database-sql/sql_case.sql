@@ -53,7 +53,7 @@ SELECT MAX(birth_date) FROM employees;
 
 -- current avg_sal for each group; RD SM PrQM, FiHR,CS
 
-SELECT d.dept_name,
+SELECT -- d.dept_name,
 	CASE
        WHEN d.dept_name IN ('research', 'development') THEN 'R&D'
        WHEN d.dept_name IN ('sales', 'marketing') THEN 'Sales & Marketing'
@@ -69,6 +69,55 @@ FROM dept_emp AS de
       USING(emp_no)
 	JOIN salaries AS s
       ON e.emp_no = s.emp_no AND s.to_date > CURDATE()
-GROUP BY dept_group,d.dept_name
+GROUP BY dept_group -- ,d.dept_name
 ORDER BY dept_group
+;
+
+SELECT  d.dept_name,
+	CASE
+       WHEN d.dept_name IN ('research', 'development') THEN 'R&D'
+       WHEN d.dept_name IN ('sales', 'marketing') THEN 'Sales & Marketing'
+       WHEN d.dept_name IN ('Production', 'Quality Management') THEN 'Prod & QM'
+       WHEN d.dept_name IN ('Finance', 'Human Resources') THEN 'Finance & HR'
+       ELSE d.dept_name
+	END AS dept_group,
+        ROUND(AVG(s.salary),0) AS cur_avg_sal
+FROM dept_emp AS de
+	JOIN departments AS d
+      USING(dept_no)
+	JOIN employees AS e
+      USING(emp_no)
+	JOIN salaries AS s
+      ON e.emp_no = s.emp_no AND s.to_date > CURDATE()
+GROUP BY dept_group  ,d.dept_name
+ORDER BY dept_group
+;
+-- remove dups from 'is_current' from above
+SELECT e.emp_no,de.dept_no,de.from_date,de.to_date,
+		IF ((de.to_date) > CURDATE(),1,0) AS is_current
+FROM employees AS e
+	JOIN dept_emp AS de
+      USING(emp_no)
+GROUP BY e.emp_no,de.dept_no
+;
+
+SELECT DISTINCT emp_no,  MAX(to_date),
+				IF (MAX(to_date) > CURDATE(),1,0) AS is_current
+FROM (
+	SELECT e.emp_no,de.dept_no,de.from_date,de.to_date,
+		IF (MAX(de.to_date) > CURDATE(),1,0) AS is_current
+	FROM employees AS e
+		JOIN dept_emp AS de
+		  USING(emp_no)
+	GROUP BY e.emp_no,de.dept_no
+) AS cur
+GROUP BY emp_no
+;
+
+SELECT e.emp_no,de.dept_no,de.from_date,de.to_date,
+		IF ((de.to_date = MAX(de.to_date)) AND (MAX(de.to_date) > CURDATE()),1,0) AS is_current
+FROM employees AS e
+	JOIN dept_emp AS de
+      USING(emp_no)
+GROUP BY e.emp_no,de.dept_no
 ;
