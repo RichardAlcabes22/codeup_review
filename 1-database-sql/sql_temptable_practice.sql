@@ -80,3 +80,35 @@ FROM payment
 USE oneil_2101;
 SELECT * FROM amnt_no_dec LIMIT 10;
 DROP TABLE IF EXISTS amnt_no_dec;
+
+USE employees;
+
+-- current AVG salary in each dept
+
+SELECT  d.dept_name,
+        ROUND(AVG(s.salary),0) AS cur_avg_sal,
+        ((SELECT ROUND(AVG(salary),0)
+			FROM salaries
+            WHERE YEAR(to_date)=9999)) AS total_avg,
+		ROUND((AVG(salary - (SELECT AVG(salary) FROM salaries where to_date > now()))
+        /
+        (SELECT stddev(salary) FROM salaries where to_date > now())),3) AS z_score
+FROM dept_emp AS de
+	JOIN departments AS d
+      USING(dept_no)
+	JOIN employees AS e
+      USING(emp_no)
+	JOIN salaries AS s
+      ON e.emp_no = s.emp_no AND s.to_date > CURDATE()
+GROUP BY d.dept_name
+ORDER BY z_score DESC
+;
+
+    -- Returns the current z-scores for each salary
+    -- Notice that there are 2 separate scalar subqueries involved
+    SELECT salary,
+        (salary - (SELECT AVG(salary) FROM salaries where to_date > now()))
+        /
+        (SELECT stddev(salary) FROM salaries where to_date > now()) AS zscore
+    FROM salaries
+    WHERE to_date > now();
