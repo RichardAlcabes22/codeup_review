@@ -202,4 +202,21 @@ FROM city AS ct
 -- select title, descr,release_yr,lang from film left-joined with language table
 SELECT * FROM language LIMIT 5;
 
-SELECT f.title,f.description,f.release_year,l.language
+SELECT f.title,f.description,f.release_year,l.name
+FROM film AS f
+	LEFT JOIN language AS l
+      ON f.language_id = l.language_id
+;
+-- select first_name, last,address,adress2,city_name,district,postal from staff table join address and city
+SELECT * FROM staff LIMIT 5;
+SELECT * FROM address LIMIT 5;
+SELECT s.first_name, s.last_name,a.address,a.address2,c.city,a.district,a.postal_code
+FROM staff AS s
+	LEFT JOIN address AS a
+      USING(address_id)
+	LEFT JOIN city AS c
+      USING(city_id)
+;
+
+
+-- display first and last names of all actors in lowercase
