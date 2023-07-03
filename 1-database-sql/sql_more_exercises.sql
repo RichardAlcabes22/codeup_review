@@ -220,3 +220,137 @@ FROM staff AS s
 
 
 -- display first and last names of all actors in lowercase
+SELECT CONCAT(LOWER(first_name),' ',LOWER(last_name)) AS full_name
+FROM actor
+LIMIT 5;
+-- id, first name, last name of actor with first_name = Joe
+SELECT actor_id,first_name,last_name
+FROM actor
+WHERE first_name = 'Joe';
+-- all actors with last_names contain 'gen'
+SELECT actor_id,first_name,last_name
+FROM actor
+WHERE last_name LIKE '%gen%';
+-- actors with last names containing 'li', order by last_name, first_name
+SELECT actor_id,last_name,first_name
+FROM actor
+WHERE last_name LIKE '%li%'
+ORDER BY last_name,first_name;
+-- display county_id and country cols for AFG, BANG,CHI
+SELECT * FROM country LIMIT 5;
+SELECT country_id,country
+FROM country
+WHERE country IN ('Afghanistan','Bangladesh','China');
+-- List last_names of actors and number of actors with each last_name, where actor COUNT > 1
+SELECT last_name,COUNT(*) AS total
+FROM actor
+GROUP BY last_name
+HAVING total > 1
+ORDER BY total DESC;
+-- recreate schema 'address' table
+SHOW CREATE TABLE address;
+-- first/last names and address of staff members
+SELECT * FROM staff LIMIT 5;
+SELECT * FROM address LIMIT 5;
+SELECT first_name,last_name,address
+FROM staff AS s
+	JOIN address AS a
+      USING(address_id)
+;
+-- total amount by each staff in Aug2005
+SELECT * FROM rental LIMIT 5;
+SELECT * FROM payment LIMIT 5;
+
+SELECT staff_id,SUM(amount),COUNT(*),MIN(payment_date),MAX(payment_date)
+FROM payment
+WHERE payment_date LIKE '2005-08%'
+GROUP BY staff_id;
+-- list each film and COUNT of actors listed for film
+SELECT * FROM film_actor LIMIT 5;
+
+SELECT film_id, COUNT(actor_id) AS total_actors
+FROM film_actor
+GROUP BY film_id;
+
+-- display title of films begin with 'K' and 'Q' and ENGLISH language
+SELECT * FROM language LIMIT 5;
+
+SELECT title
+FROM film AS f
+	JOIN language AS l
+      USING(language_id)
+WHERE l.name = 'English'
+	AND SUBSTR(title,1,1) IN ('K','Q')
+;
+-- display actors appear in 'Alone Trip'
+SELECT film_id FROM film WHERE title = 'Alone Trip';
+
+SELECT fa.actor_id,fa.film_id,a.first_name,a.last_name
+FROM film_actor AS fa
+	JOIN actor AS a
+      USING(actor_id)
+WHERE fa.film_id = (
+				SELECT film_id FROM film WHERE title = 'Alone Trip'
+                )
+;
+-- list names and emails for all customers in Canada
+SELECT * FROM customer LIMIT 5;
+SELECT * FROM city LIMIT 5;
+SELECT * FROM country LIMIT 5;
+SELECT * FROM customer_list LIMIT 5;
+
+SELECT country_id FROM country WHERE country = 'Canada';
+SELECT city_id,city FROM city WHERE country_id = 20;
+
+
+SELECT cl.ID, cl.name, c.email, cl.country
+FROM customer_list AS cl
+	JOIN customer AS c
+      ON cl.ID = c.customer_id
+WHERE cl.country = 'Canada';
+
+-- all movies identified as 'Family'
+SELECT title, category
+FROM film_list
+WHERE category = 'Family';
+
+-- a query to show sum amount in dollars per store
+SELECT * FROM store LIMIT 5;
+SELECT * FROM sales_by_store LIMIT 5;
+
+SELECT st.store_id,SUM(amount)
+FROM store AS st
+	JOIN staff AS stf
+      ON st.manager_staff_id = stf.staff_id
+	JOIN payment AS p
+      USING(staff_id)
+GROUP BY st.store_id;
+SELECT * FROM payment WHERE staff_id IS NULL;
+-- for each store, show store_id,city,country
+SELECT s.store_id,a.city_id,c.city,cnty.country_id,cnty.country
+FROM store AS s
+	JOIN address AS a
+      USING(address_id)
+	JOIN city AS c
+      USING(city_id)
+	JOIN country AS cnty
+	  USING(country_id);
+      
+-- top 5 genres in gross revenue DESC
+SELECT * FROM film_category LIMIT 5;
+SELECT * FROM inventory LIMIT 5;
+SELECT * FROM category LIMIT 5;
+
+SELECT cat.category_id,cat.name, COUNT(*) AS total_units,SUM(p.amount) AS total_$
+FROM category AS cat
+	JOIN film_category AS fcat
+      USING(category_id)
+	JOIN inventory AS i
+      USING(film_id)
+	JOIN rental AS r
+      USING(inventory_id)
+	JOIN payment AS p
+      USING(rental_id)
+GROUP BY cat.category_id,cat.name
+ORDER BY total_$ DESC
+LIMIT 5;
