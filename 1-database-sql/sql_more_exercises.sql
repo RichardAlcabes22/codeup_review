@@ -354,3 +354,27 @@ FROM category AS cat
 GROUP BY cat.category_id,cat.name
 ORDER BY total_$ DESC
 LIMIT 5;
+
+-- avg replacement cost of a film, then sliced by rating
+SELECT ROUND(AVG(replacement_cost),2) AS avg_rep_cost
+FROM film
+;
+SELECT rating,ROUND(AVG(replacement_cost),2) AS avg_rep_cost
+FROM film
+GROUP BY rating;
+
+-- how many unique film titles in each genre
+SELECT fcat.category_id,cat.name,COUNT(fcat.film_id)
+FROM film_category AS fcat
+	JOIN category AS cat
+      USING(category_id)
+GROUP BY fcat.category_id;
+
+-- top 5 most frequently rented films
+SELECT i.film_id,COUNT(*) AS tot_inv_units
+FROM rental AS r
+	JOIN inventory AS i
+      USING(inventory_id)
+GROUP BY i.film_id;
+-- -- -- create a temp table AS ... by addding category_id to rental table
+SELECT rental_id, inventory_id,category_id
