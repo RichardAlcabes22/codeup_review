@@ -371,10 +371,128 @@ FROM film_category AS fcat
 GROUP BY fcat.category_id;
 
 -- top 5 most frequently rented films
+SELECT * FROM rental LIMIT 5;
+SELECT * FROM inventory LIMIT 5;
+SELECT * FROM film LIMIT 5;
+
 SELECT i.film_id,COUNT(*) AS tot_inv_units
 FROM rental AS r
 	JOIN inventory AS i
       USING(inventory_id)
 GROUP BY i.film_id;
--- -- -- create a temp table AS ... by addding category_id to rental table
-SELECT rental_id, inventory_id,category_id
+-- -- -- create a temp table AS ... by addding film_id to rental table
+SELECT r.rental_id, r.inventory_id,i.film_id
+FROM rental AS r
+	JOIN inventory AS i
+      ON r.inventory_id = i.inventory_id
+ORDER BY r.rental_id
+;
+SELECT rentals_by_film.film_id,f.title,COUNT(*)
+FROM (
+	SELECT r.rental_id, r.inventory_id,i.film_id
+	FROM rental AS r
+		JOIN inventory AS i
+		  ON r.inventory_id = i.inventory_id
+	ORDER BY r.rental_id
+	) AS rentals_by_film
+    JOIN film AS f
+      USING(film_id)
+GROUP BY film_id
+ORDER BY COUNT(*) DESC
+LIMIT 5
+;
+
+-- top 5 most profitable films
+SELECT * FROM payment LIMIT 5;
+
+-- -- -- create a temp table AS ... by addding film_id to rental table and add rental amount from payment table
+SELECT r.rental_id, r.inventory_id,i.film_id,p.amount
+FROM rental AS r
+	JOIN inventory AS i
+      ON r.inventory_id = i.inventory_id
+	JOIN payment AS p
+      USING(rental_id)
+ORDER BY r.rental_id
+;
+
+SELECT rentals_by_film.film_id,f.title,SUM(rentals_by_film.amount)
+FROM(
+	SELECT r.rental_id, r.inventory_id,i.film_id,p.amount
+	FROM rental AS r
+		JOIN inventory AS i
+		  ON r.inventory_id = i.inventory_id
+		JOIN payment AS p
+		  USING(rental_id)
+	ORDER BY r.rental_id
+    ) AS rentals_by_film
+    JOIN film AS f
+      USING(film_id)
+GROUP BY film_id
+ORDER BY SUM(rentals_by_film.amount) DESC
+LIMIT 5
+;
+
+-- who is the best customer?
+SELECT * FROM customer LIMIT 5;
+
+SELECT r.rental_id,r.customer_id,p.amount
+FROM rental AS r
+	JOIN payment AS p
+      USING(rental_id)
+;
+SELECT cust_amt.customer_id,c.first_name,c.last_name,SUM(cust_amt.amount) AS total
+FROM (
+	SELECT r.rental_id,r.customer_id,p.amount
+	FROM rental AS r
+	JOIN payment AS p
+      USING(rental_id)
+      ) AS cust_amt
+	JOIN customer AS c
+      USING(customer_id)
+GROUP BY customer_id
+ORDER by total DESC
+LIMIT 1;
+
+-- actors who have appeared in most films
+SELECT * FROM actor LIMIT 5;
+SELECT fa.actor_id,a.first_name,a.last_name,COUNT(fa.film_id)
+FROM film_actor AS fa
+	JOIN actor AS a
+      USING(actor_id)
+GROUP BY fa.actor_id,a.first_name,a.last_name
+ORDER BY COUNT(fa.film_id) DESC
+;
+
+-- total sales for each store by month of 2005
+SELECT * FROM staff LIMIT 5;
+SELECT * FROM store LIMIT 5;
+
+SELECT SUBSTR(p.payment_date,1,7) AS monthy,stor.store_id,SUM(p.amount) AS total_sales
+FROM payment AS p
+	JOIN staff AS stff
+      USING(staff_id)
+    JOIN store AS stor
+      ON stor.manager_staff_id = stff.staff_id
+GROUP BY monthy,stor.store_id
+HAVING monthy LIKE '2005%'
+ORDER BY monthy;
+
+-- display film title, cust_name,cust_phone,cust_address for all DVDs not yet returned
+
+SELECT * FROM address LIMIT 5;
+SELECT *
+FROM rental
+WHERE return_date IS NULL;
+
+SELECT i.inventory_id,i.film_id,c.first_name,c.last_name,a.address,a.phone
+FROM customer AS c
+	JOIN address AS a
+      USING(address_id)
+	JOIN rental AS r
+      USING(customer_id)
+	JOIN inventory AS i
+	  USING(inventory_id)
+	JOIN film AS f
+      USING(film_id)
+WHERE r.return_date IS NULL
+;
