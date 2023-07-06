@@ -77,7 +77,7 @@ FROM departments AS d
       USING(emp_no)
 WHERE YEAR(dm.to_date) = 9999
 	AND YEAR(s.to_date) = 9999
-;
+-- ORDER BY d.dept_no;
 -- current employee count for each dept:
 SELECT d.dept_no, d.dept_name,COUNT(de.emp_no)
 FROM departments AS d

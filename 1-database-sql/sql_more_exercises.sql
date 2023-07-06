@@ -496,3 +496,306 @@ FROM customer AS c
       USING(film_id)
 WHERE r.return_date IS NULL
 ;
+
+-- table showing avg current salary of each dept along with current manager sal of each dept
+USE employees;
+SHOW tables;
+SELECT * FROM salaries LIMIT 5;
+
+SELECT dm.dept_no, s.salary
+FROM dept_manager AS dm
+	JOIN employees AS e
+      USING(emp_no)
+	JOIN salaries AS s
+      ON e.emp_no = s.emp_no AND YEAR(s.to_date) = 9999
+WHERE YEAR(dm.to_date) = 9999
+;
+SELECT de.dept_no,ROUND(AVG(s.salary),0) AS avg_sal,ms.salary AS manager_sal
+FROM (
+	SELECT dm.dept_no, s.salary
+	FROM dept_manager AS dm
+		JOIN employees AS e
+		  USING(emp_no)
+		JOIN salaries AS s
+		  ON e.emp_no = s.emp_no AND YEAR(s.to_date) = 9999
+	WHERE YEAR(dm.to_date) = 9999
+    ) AS ms
+	JOIN dept_emp AS de
+      ON ms.dept_no = de.dept_no
+	JOIN salaries AS s
+      ON de.emp_no = s.emp_no AND s.to_date > CURDATE()
+WHERE de.to_date > CURDATE()
+GROUP BY de.dept_no,ms.salary
+ORDER BY de.dept_no
+;
+
+-- now with the above as CTE, display depts where manager is paid less than avg_sal
+
+SELECT dept_no,d.dept_name,avg_sal,manager_sal
+FROM(
+		SELECT de.dept_no,ROUND(AVG(s.salary),0) AS avg_sal,ms.salary AS manager_sal
+		FROM (
+				SELECT dm.dept_no, s.salary
+				FROM dept_manager AS dm
+					JOIN employees AS e
+					  USING(emp_no)
+					JOIN salaries AS s
+					  ON e.emp_no = s.emp_no AND YEAR(s.to_date) = 9999
+				WHERE YEAR(dm.to_date) = 9999
+				) AS ms
+			JOIN dept_emp AS de
+				  ON ms.dept_no = de.dept_no
+				JOIN salaries AS s
+				  ON de.emp_no = s.emp_no AND s.to_date > CURDATE()
+			WHERE de.to_date > CURDATE()
+			GROUP BY de.dept_no,ms.salary
+			ORDER BY de.dept_no
+	) AS sal_comp
+    JOIN departments AS d
+      USING(dept_no)
+WHERE avg_sal > manager_sal
+;
+
+-- WORLD DATABASE
+USE world;
+SHOW tables;
+SELECT * FROM city LIMIT 5;
+SELECT COUNT(*) FROM city;
+SELECT * FROM country LIMIT 5;
+SELECT COUNT(*) FROM country;
+SELECT * FROM countrylanguage LIMIT 5;
+SELECT COUNT(*) FROM countrylanguage;
+
+-- what languages spoken in Santa Monica
+SELECT CountryCode
+FROM city
+WHERE city.Name = 'Santa Monica'
+;
+
+SELECT Language,Percentage
+FROM countrylanguage
+WHERE CountryCode = (
+					SELECT CountryCode
+					FROM city
+					WHERE city.Name = 'Santa Monica'
+                    )
+ORDER BY Percentage DESC
+;
+-- how many countries in each region
+
+SELECT Region,COUNT(*) AS total
+FROM country
+GROUP BY Region
+ORDER BY total DESC
+;
+
+-- total population of each region
+SELECT Region,SUM(Population) AS total_pop
+FROM country
+GROUP BY Region
+ORDER BY total_pop DESC
+;
+
+-- total population for each continent
+SELECT Continent,SUM(Population) AS total_pop
+FROM country
+GROUP BY Continent
+ORDER BY total_pop DESC
+;
+
+-- avg life expectancy across globe
+SELECT AVG(LifeExpectancy) AS avg_life_exp
+FROM country
+-- GROUP BY Continent
+-- ORDER BY avg_life_exp DESC
+;
+-- avg life exp for each continent
+SELECT Continent,AVG(LifeExpectancy) AS avg_life_exp
+FROM country
+GROUP BY Continent
+ORDER BY avg_life_exp
+;
+-- avg life exp for each region
+SELECT Region,AVG(LifeExpectancy) AS avg_life_exp
+FROM country
+GROUP BY Region
+ORDER BY avg_life_exp
+;
+-- find countries where local name is not like official name
+SELECT *
+FROM country AS c
+WHERE c.LocalName <> c.Name
+;
+-- countries with life exp less than 70
+SELECT *
+FROM country
+WHERE LifeExpectancy < 70
+;
+-- What state is City X located in
+SELECT District
+FROM city
+WHERE city.Name = 'Houston'
+;
+-- what region is city x located in
+SELECT Region
+FROM country
+WHERE Code = (
+				SELECT CountryCode
+                FROM city
+                WHERE city.Name = 'Houston'
+			)
+;
+-- what country is city x in
+SELECT country.Name
+FROM country
+WHERE Code = (
+				SELECT CountryCode
+                FROM city
+                WHERE city.Name = 'Houston'
+			)
+;
+-- What is life expectancy in city X
+SELECT LifeExpectancy
+FROM country
+WHERE Code = (
+				SELECT CountryCode
+                FROM city
+                WHERE city.Name = 'Houston'
+			)
+;
+
+-- PIZZA
+USE pizza;
+SHOW tables;
+SELECT * FROM pizzas LIMIT 5;
+SELECT * FROM toppings LIMIT 5;
+SELECT * FROM pizza_toppings LIMIT 5;
+SELECT * FROM modifiers LIMIT 5;
+SELECT * FROM pizza_modifiers LIMIT 5;
+SELECT * FROM sizes LIMIT 5;
+
+-- number of unique toppings
+SELECT COUNT(*) FROM toppings;
+-- unique orders in dataset
+SELECT DISTINCT order_id FROM pizzas;
+SELECT COUNT(*)
+FROM (
+		SELECT DISTINCT order_id FROM pizzas
+	) AS orders
+;
+-- unique toppings
+SELECT COUNT(*) FROM toppings;
+-- size of pizza that has sold most units
+SELECT size_id,COUNT(*)
+FROM pizzas
+GROUP BY size_id
+ORDER BY COUNT(*) DESC
+;
+-- how many pizzas sold in total
+SELECT COUNT(*)
+FROM pizzas
+;
+-- avg number of pizzas sold per order
+SELECT order_id,COUNT(*) AS p_count
+FROM pizzas
+GROUP BY order_id
+;
+
+SELECT AVG(p_count)
+FROM (
+		SELECT order_id,COUNT(*) AS p_count
+		FROM pizzas
+		GROUP BY order_id
+	) AS count_per_order
+;
+-- find total price of each order
+-- build temp_table/view
+SELECT p.pizza_id,p.order_id,p.size_id,
+		CASE size_id
+			WHEN 1 THEN (SELECT size_price FROM sizes WHERE size_id = 1)
+            WHEN 2 THEN (SELECT size_price FROM sizes WHERE size_id = 2)
+            WHEN 3 THEN (SELECT size_price FROM sizes WHERE size_id = 3)
+            WHEN 4 THEN (SELECT size_price FROM sizes WHERE size_id = 4)
+		END AS size_price,
+        pm.modifier_id,
+			CASE modifier_id
+				WHEN 1 THEN (SELECT modifier_price FROM modifiers WHERE modifier_id = 1)
+				WHEN 2 THEN (SELECT modifier_price FROM modifiers WHERE modifier_id = 2)
+				WHEN 3 THEN (SELECT modifier_price FROM modifiers WHERE modifier_id = 3)
+				ELSE NULL
+			END AS mod_price,
+		pt.topping_id,
+				CASE topping_id
+					WHEN 1 THEN (SELECT topping_price FROM toppings WHERE topping_id = 1)
+					WHEN 2 THEN (SELECT topping_price FROM toppings WHERE topping_id = 2)
+					WHEN 3 THEN (SELECT topping_price FROM toppings WHERE topping_id = 3)
+                    WHEN 4 THEN (SELECT topping_price FROM toppings WHERE topping_id = 4)
+                    WHEN 5 THEN (SELECT topping_price FROM toppings WHERE topping_id = 5)
+                    WHEN 6 THEN (SELECT topping_price FROM toppings WHERE topping_id = 6)
+                    WHEN 7 THEN (SELECT topping_price FROM toppings WHERE topping_id = 7)
+                    WHEN 8 THEN (SELECT topping_price FROM toppings WHERE topping_id = 8)
+                    WHEN 9 THEN (SELECT topping_price FROM toppings WHERE topping_id = 9)
+					ELSE NULL
+				END AS topping_base_price        
+FROM pizzas AS p
+	LEFT JOIN pizza_modifiers AS pm
+      USING(pizza_id)
+	LEFT JOIN modifiers AS m
+      USING(modifier_id)
+	LEFT JOIN pizza_toppings AS pt
+      USING(pizza_id)
+	LEFT JOIN toppings AS t
+      USING(topping_id)
+;
+
+-- extract total price from view
+SELECT order_id,SUM(size_price) AS sizes,SUM(mod_price) AS mods,(SUM(size_price)+SUM(mod_price)) AS total
+FROM (
+		SELECT pizza_id,order_id,size_id,
+		CASE size_id
+			WHEN 1 THEN (SELECT size_price FROM sizes WHERE size_id = 1)
+            WHEN 2 THEN (SELECT size_price FROM sizes WHERE size_id = 2)
+            WHEN 3 THEN (SELECT size_price FROM sizes WHERE size_id = 3)
+            WHEN 4 THEN (SELECT size_price FROM sizes WHERE size_id = 4)
+		END AS size_price,
+        pm.modifier_id,
+			CASE modifier_id
+				WHEN 1 THEN (SELECT modifier_price FROM modifiers WHERE modifier_id = 1)
+				WHEN 2 THEN (SELECT modifier_price FROM modifiers WHERE modifier_id = 2)
+				WHEN 3 THEN (SELECT modifier_price FROM modifiers WHERE modifier_id = 3)
+				ELSE NULL
+			END AS mod_price
+        FROM pizzas
+        	LEFT JOIN pizza_modifiers AS pm
+			 USING(pizza_id)
+			LEFT JOIN modifiers AS m
+			 USING(modifier_id)
+	) AS prices
+GROUP BY order_id
+;
+
+-- stopping point-the issue is that each pizza may contain zero or more toppings, and each topping will populate with an associated
+-- size_price will need to NORMALIZE the view that is being constructed
+
+-- avg price of pizzas without extra cheese
+SELECT pizza_id,size_id,
+		CASE size_id
+			WHEN 1 THEN (SELECT size_price FROM sizes WHERE size_id = 1)
+            WHEN 2 THEN (SELECT size_price FROM sizes WHERE size_id = 2)
+            WHEN 3 THEN (SELECT size_price FROM sizes WHERE size_id = 3)
+            WHEN 4 THEN (SELECT size_price FROM sizes WHERE size_id = 4)
+		END AS size_price,
+        pm.modifier_id,
+			CASE modifier_id
+				WHEN 1 THEN (SELECT modifier_price FROM modifiers WHERE modifier_id = 1)
+				WHEN 2 THEN (SELECT modifier_price FROM modifiers WHERE modifier_id = 2)
+				WHEN 3 THEN (SELECT modifier_price FROM modifiers WHERE modifier_id = 3)
+				ELSE NULL
+			END AS mod_price
+FROM pizzas AS p
+	LEFT JOIN pizza_modifiers AS pm
+      USING(pizza_id)
+	LEFT JOIN modifiers AS m
+      USING(modifier_id)
+WHERE modifier_id != 1
+ORDER BY pizza_id;
