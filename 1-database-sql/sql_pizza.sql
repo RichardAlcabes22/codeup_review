@@ -68,6 +68,7 @@ SHOW TABLES;
 SELECT * FROM pizza_size;
 SELECT * FROM pizza_mods;
 SELECT * FROM pizza_tops;
+SELECT * FROM pizza_totals;
 
 -- with these tables created in oneil_2101, we can proceed to answer the questions
 -- total price of each pizza_id
@@ -174,3 +175,220 @@ FROM (
 				AND pizza.pizza_toppings.topping_id = (SELECT topping_id FROM pizza.toppings WHERE topping_name = 'olives')
 	) AS lrg_w_olives
 ;
+
+-- avg number of toppings per pizza
+SELECT pizza_id,COUNT(*) AS total
+FROM pizza_tops
+GROUP BY pizza_id
+;
+SELECT AVG(total)
+FROM (
+		SELECT pizza_id,COUNT(*) AS total
+		FROM pizza_tops
+		GROUP BY pizza_id
+	) As toppings_count
+;
+-- average number of pizzas per order
+SELECT order_id,COUNT(*) AS total
+FROM pizza_size
+GROUP BY order_id
+;
+SELECT AVG(total)
+FROM (
+		SELECT order_id,COUNT(*) AS total
+		FROM pizza_size
+		GROUP BY order_id
+	) As pizza_count
+;
+-- average pizza price
+SELECT AVG(total)
+FROM pizza_totals
+;
+-- average order total
+SELECT ps.order_id,ROUND(SUM(pt.total),2) AS order_tot
+FROM pizza_size AS ps
+	JOIN pizza_totals AS pt
+      USING(pizza_id)
+GROUP BY order_id
+;
+SELECT ROUND(AVG(order_tot),2)
+FROM (
+		SELECT ps.order_id,ROUND(SUM(pt.total),2) AS order_tot
+		FROM pizza_size AS ps
+			JOIN pizza_totals AS pt
+			  USING(pizza_id)
+		GROUP BY order_id
+	) AS order_totals
+;
+-- *****************************************
+-- avg number of items per order *********** maybe CREATE TABLE?
+-- *****************************************
+SELECT ps.order_id,COUNT(ps.pizza_id),IF(COUNT(pm.modifier_id),COUNT(pm.modifier_id),0),
+		IF(COUNT(pt.topping_id),COUNT(pt.topping_id),0)
+FROM pizza_size AS ps
+	JOIN pizza_mods AS pm
+      USING(order_id)
+	JOIN pizza_tops AS pt
+      USING(order_id)
+GROUP BY ps.order_id
+;
+-- still needs work ....  ah, use the ORDER BY
+-- avg number of toppings per pizza, broken down by pizza_size
+SELECT ps.pizza_id,ps.size_id,
+		IF(COUNT(pt.topping_id),COUNT(pt.topping_id),0) AS topping_cnt
+FROM pizza_size AS ps
+	LEFT JOIN pizza_tops AS pt
+      USING(pizza_id)
+GROUP BY ps.pizza_id,ps.size_id
+ORDER BY ps.pizza_id;
+
+SELECT size_id,s.size_name,AVG(topping_cnt)
+FROM (
+		SELECT ps.pizza_id,ps.size_id,
+		IF(COUNT(pt.topping_id),COUNT(pt.topping_id),0) AS topping_cnt
+		FROM pizza_size AS ps
+			LEFT JOIN pizza_tops AS pt
+			  USING(pizza_id)
+		GROUP BY ps.pizza_id,ps.size_id
+		ORDER BY ps.pizza_id
+	 ) AS topping_cnts
+     JOIN pizza.sizes AS s
+       USING(size_id)
+GROUP BY size_id
+;
+-- AVG order total for orders containing more than 1 pizza
+SELECT po.order_id,COUNT(*),ROUND(SUM(total),2) AS order_total
+FROM pizza_totals AS pt
+	JOIN (SELECT pizza_id,order_id FROM pizza_size) AS po
+	  USING(pizza_id)
+GROUP BY po.order_id
+HAVING COUNT(*) > 1
+;
+SELECT ROUND(AVG(order_total),2)
+FROM (
+		SELECT po.order_id,COUNT(*),ROUND(SUM(total),2) AS order_total
+		FROM pizza_totals AS pt
+			JOIN (SELECT pizza_id,order_id FROM pizza_size) AS po
+			  USING(pizza_id)
+		GROUP BY po.order_id
+		HAVING COUNT(*) > 1
+	) AS order_totals
+;
+-- for orders contain a single pizza, what is most comon size
+SELECT po.order_id
+FROM pizza_totals AS pt
+	JOIN (SELECT pizza_id,order_id,size_id FROM pizza_size) AS po
+	  USING(pizza_id)
+GROUP BY po.order_id
+HAVING COUNT(*) = 1
+;
+SELECT s.size_name,COUNT(order_id)
+FROM (
+		SELECT po.order_id
+		FROM pizza_totals AS pt
+			JOIN (SELECT pizza_id,order_id,size_id FROM pizza_size) AS po
+			  USING(pizza_id)
+		GROUP BY po.order_id
+		HAVING COUNT(*) = 1
+	) AS single_pie_orders
+    JOIN pizza_size AS ps
+      USING(order_id)
+	JOIN pizza.sizes AS s
+      USING(size_id)
+GROUP BY size_id
+ORDER BY COUNT(order_id) DESC
+;
+
+-- How many orders consist of 3+ pizzas
+SELECT po.order_id
+FROM pizza_totals AS pt
+	JOIN (SELECT pizza_id,order_id,size_id FROM pizza_size) AS po
+	  USING(pizza_id)
+GROUP BY po.order_id
+HAVING COUNT(*) >= 3
+;
+SELECT COUNT(*)
+FROM (
+		SELECT po.order_id
+		FROM pizza_totals AS pt
+			JOIN (SELECT pizza_id,order_id,size_id FROM pizza_size) AS po
+			  USING(pizza_id)
+		GROUP BY po.order_id
+		HAVING COUNT(*) >= 3
+	) AS three_or_more
+;
+SELECT ps.order_id,
+		IF(COUNT(pt.topping_id),COUNT(pt.topping_id),0) AS topping_cnt
+FROM pizza_size AS ps
+	LEFT JOIN pizza_tops AS pt
+      USING(pizza_id)
+	JOIN (
+			SELECT po.order_id
+			FROM pizza_totals AS pt
+				JOIN (SELECT pizza_id,order_id,size_id FROM pizza_size) AS po
+				  USING(pizza_id)
+			GROUP BY po.order_id
+			HAVING COUNT(*) >= 3
+		) AS three_or_more
+	  ON ps.order_id = three_or_more.order_id
+GROUP BY ps.order_id
+ORDER BY ps.order_id
+;
+SELECT AVG(topping_cnt)
+FROM (	
+		SELECT ps.order_id,
+				IF(COUNT(pt.topping_id),COUNT(pt.topping_id),0) AS topping_cnt
+		FROM pizza_size AS ps
+			LEFT JOIN pizza_tops AS pt
+			  USING(pizza_id)
+			JOIN (
+					SELECT po.order_id
+					FROM pizza_totals AS pt
+						JOIN (SELECT pizza_id,order_id,size_id FROM pizza_size) AS po
+						  USING(pizza_id)
+					GROUP BY po.order_id
+					HAVING COUNT(*) >= 3
+				) AS three_or_more
+			  ON ps.order_id = three_or_more.order_id
+		GROUP BY ps.order_id
+		ORDER BY ps.order_id
+
+		) AS topping_count_FILTER_three_plus
+;
+-- most common topping on large and xtra large pizzas
+SELECT pizza_id,size_id,topping_name
+FROM pizza_size
+	JOIN pizza_tops
+     USING(pizza_id)
+WHERE size_id IN (3,4)
+;
+SELECT topping_name,COUNT(*)
+FROM pizza_size
+	JOIN pizza_tops
+     USING(pizza_id)
+WHERE size_id IN (3,4)
+GROUP BY topping_name
+ORDER BY COUNT(*) DESC
+;
+SELECT SUM(total_count)
+FROM	(SELECT topping_name,COUNT(*) AS total_count
+		FROM pizza_size
+			JOIN pizza_tops
+			 USING(pizza_id)
+		WHERE size_id IN (3,4)
+		GROUP BY topping_name
+		ORDER BY COUNT(*) DESC
+        ) AS a
+;
+-- which size pizza is most frequently modified with mods
+SELECT size_id,size_name,COUNT(pizza_id) AS total_count
+FROM pizza_size
+	JOIN pizza.sizes
+      USING(size_id)
+WHERE pizza_id IN (	
+					SELECT pizza_id FROM pizza_mods
+					)
+GROUP BY size_id
+ORDER BY total_count DESC
+;
+
